@@ -67,6 +67,8 @@ make
 %install
 rm -rf $RPM_BUILD_ROOT
 make DESTDIR=$RPM_BUILD_ROOT install
+mkdir $RPM_BUILD_ROOT/%{_sysconfdir}/modprobe.d
+install -m 644 etc/init.d/zfs-modprobe.conf $RPM_BUILD_ROOT/%{_sysconfdir}/modprobe.d/zfs.conf
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -80,6 +82,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_libdir}/*
 %{_mandir}/man8/*
 %{_sysconfdir}/init.d/*
+%{_sysconfdir}/modprobe.d/*
 %{_sysconfdir}/zfs/*
 %{_udevdir}/*
 
