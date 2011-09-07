@@ -293,6 +293,7 @@ udevruledir = @udevruledir@
 initdir = $(DEFAULT_INIT_DIR)
 init_SCRIPTS = zfs
 EXTRA_DIST = \
+	$(top_srcdir)/etc/init.d/zfs-modprobe.conf \
 	$(top_srcdir)/etc/init.d/zfs.fedora.in \
 	$(top_srcdir)/etc/init.d/zfs.gentoo.in \
 	$(top_srcdir)/etc/init.d/zfs.lsb.in \
