@@ -1266,6 +1266,11 @@ vdev_open(vdev_t *vd)
 		}
 	}
 
+	/* Force spa_autoexpand = 1 here - it's not initialised at this
+	 * point in linux, and we want it initialised to be able to update
+	 * the vdev size here while importing a pool
+	 */
+	spa->spa_autoexpand = 1;
 	/*
 	 * If all children are healthy and the asize has increased,
 	 * then we've experienced dynamic LUN growth.  If automatic
