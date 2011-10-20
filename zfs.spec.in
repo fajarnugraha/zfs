@@ -7,6 +7,7 @@
 %define _datadir         /usr/share
 %define _includedir      /usr/include
 %define _udevdir         /lib/udev
+%define _udevruledir     /etc/udev/rules.d
 
 Summary:         ZFS Library and Utils
 Group:           Utilities/System
@@ -70,6 +71,9 @@ rm -rf $RPM_BUILD_ROOT
 make DESTDIR=$RPM_BUILD_ROOT install
 mkdir $RPM_BUILD_ROOT/%{_sysconfdir}/modprobe.d
 install -m 644 etc/init.d/zfs-modprobe.conf $RPM_BUILD_ROOT/%{_sysconfdir}/modprobe.d/zfs.conf
+mkdir -p $RPM_BUILD_ROOT/%{_udevruledir}
+mv $RPM_BUILD_ROOT/%{_udevdir}/rules.d/* $RPM_BUILD_ROOT/%{_udevruledir}/ || :
+rmdir $RPM_BUILD_ROOT/%{_udevdir}/rules.d || :
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -86,6 +90,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_sysconfdir}/modprobe.d/*
 %{_sysconfdir}/zfs/*
 %{_udevdir}/*
+%{_udevruledir}/*
 
 %files devel
 %defattr(-,root,root)
