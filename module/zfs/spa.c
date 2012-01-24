@@ -22,6 +22,9 @@
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
  */
+/*
+ * Copyright 2011 Nexenta Systems, Inc. All rights reserved.
+ */
 
 /*
  * This file contains all the routines used when modifying on-disk SPA state.
@@ -107,7 +110,7 @@ const zio_taskq_info_t zio_taskqs[ZIO_TYPES][ZIO_TASKQ_TYPES] = {
 	{ ZTI_ONE,	ZTI_NULL,	ZTI_ONE,	ZTI_NULL },
 	{ ZTI_FIX(8),	ZTI_NULL,	ZTI_BATCH,	ZTI_NULL },
 	{ ZTI_BATCH,	ZTI_FIX(5),	ZTI_FIX(16),	ZTI_FIX(5) },
-	{ ZTI_FIX(100),	ZTI_NULL,	ZTI_ONE,	ZTI_NULL },
+	{ ZTI_PCT(100),	ZTI_NULL,	ZTI_ONE,	ZTI_NULL },
 	{ ZTI_ONE,	ZTI_NULL,	ZTI_ONE,	ZTI_NULL },
 	{ ZTI_ONE,	ZTI_NULL,	ZTI_ONE,	ZTI_NULL },
 };
@@ -665,7 +668,7 @@ spa_create_zio_taskqs(spa_t *spa)
 			const zio_taskq_info_t *ztip = &zio_taskqs[t][q];
 			enum zti_modes mode = ztip->zti_mode;
 			uint_t value = ztip->zti_value;
-			uint_t flags = TASKQ_PREPOPULATE;
+			uint_t flags = 0;
 			char name[32];
 
 			if (t == ZIO_TYPE_WRITE)

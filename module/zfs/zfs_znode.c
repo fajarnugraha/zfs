@@ -106,6 +106,7 @@ zfs_znode_cache_constructor(void *buf, void *arg, int kmflags)
 	rw_init(&zp->z_parent_lock, NULL, RW_DEFAULT, NULL);
 	rw_init(&zp->z_name_lock, NULL, RW_DEFAULT, NULL);
 	mutex_init(&zp->z_acl_lock, NULL, MUTEX_DEFAULT, NULL);
+	rw_init(&zp->z_xattr_lock, NULL, RW_DEFAULT, NULL);
 
 	mutex_init(&zp->z_range_lock, NULL, MUTEX_DEFAULT, NULL);
 	avl_create(&zp->z_range_avl, zfs_range_compare,
@@ -113,6 +114,7 @@ zfs_znode_cache_constructor(void *buf, void *arg, int kmflags)
 
 	zp->z_dirlocks = NULL;
 	zp->z_acl_cached = NULL;
+	zp->z_xattr_cached = NULL;
 	zp->z_moved = 0;
 	return (0);
 }
@@ -128,11 +130,13 @@ zfs_znode_cache_destructor(void *buf, void *arg)
 	rw_destroy(&zp->z_parent_lock);
 	rw_destroy(&zp->z_name_lock);
 	mutex_destroy(&zp->z_acl_lock);
+	rw_destroy(&zp->z_xattr_lock);
 	avl_destroy(&zp->z_range_avl);
 	mutex_destroy(&zp->z_range_lock);
 
 	ASSERT(zp->z_dirlocks == NULL);
 	ASSERT(zp->z_acl_cached == NULL);
+	ASSERT(zp->z_xattr_cached == NULL);
 }
 
 void
@@ -265,11 +269,17 @@ zfs_inode_destroy(struct inode *ip)
 
 	mutex_enter(&zsb->z_znodes_lock);
 	list_remove(&zsb->z_all_znodes, zp);
+	zsb->z_nr_znodes--;
 	mutex_exit(&zsb->z_znodes_lock);
 
 	if (zp->z_acl_cached) {
 		zfs_acl_free(zp->z_acl_cached);
 		zp->z_acl_cached = NULL;
+	}
+
+	if (zp->z_xattr_cached) {
+		nvlist_free(zp->z_xattr_cached);
+		zp->z_xattr_cached = NULL;
 	}
 
 	kmem_cache_free(znode_cache, zp);
@@ -392,6 +402,7 @@ zfs_znode_alloc(zfs_sb_t *zsb, dmu_buf_t *db, int blksz,
 
 	mutex_enter(&zsb->z_znodes_lock);
 	list_insert_tail(&zsb->z_all_znodes, zp);
+	zsb->z_nr_znodes++;
 	membar_producer();
 	mutex_exit(&zsb->z_znodes_lock);
 
@@ -431,7 +442,7 @@ zfs_inode_update(znode_t *zp)
 	ip->i_generation = zp->z_gen;
 	ip->i_uid = zp->z_uid;
 	ip->i_gid = zp->z_gid;
-	ip->i_nlink = zp->z_links;
+	set_nlink(ip, zp->z_links);
 	ip->i_mode = zp->z_mode;
 	ip->i_blkbits = SPA_MINBLOCKSHIFT;
 	dmu_object_size_from_db(sa_get_db(zp->z_sa_hdl), &blksize,

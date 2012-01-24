@@ -140,10 +140,16 @@ xattr_changed_cb(void *arg, uint64_t newval)
 {
 	zfs_sb_t *zsb = arg;
 
-	if (newval == TRUE)
-		zsb->z_flags |= ZSB_XATTR;
-	else
+	if (newval == ZFS_XATTR_OFF) {
 		zsb->z_flags &= ~ZSB_XATTR;
+	} else {
+		zsb->z_flags |= ZSB_XATTR;
+
+		if (newval == ZFS_XATTR_SA)
+			zsb->z_xattr_sa = B_TRUE;
+		else
+			zsb->z_xattr_sa = B_FALSE;
+	}
 }
 
 static void
@@ -641,6 +647,10 @@ zfs_sb_create(const char *osname, zfs_sb_t **zsbp)
 		    &sa_obj);
 		if (error)
 			goto out;
+
+		error = zfs_get_zplprop(os, ZFS_PROP_XATTR, &zval);
+		if ((error == 0) && (zval == ZFS_XATTR_SA))
+			zsb->z_xattr_sa = B_TRUE;
 	} else {
 		/*
 		 * Pre SA versions file systems should never touch
@@ -975,6 +985,26 @@ zfs_root(zfs_sb_t *zsb, struct inode **ipp)
 	return (error);
 }
 EXPORT_SYMBOL(zfs_root);
+
+#ifdef HAVE_SHRINK
+int
+zfs_sb_prune(struct super_block *sb, unsigned long nr_to_scan, int *objects)
+{
+	zfs_sb_t *zsb = sb->s_fs_info;
+	struct shrinker *shrinker = &sb->s_shrink;
+	struct shrink_control sc = {
+		.nr_to_scan = nr_to_scan,
+		.gfp_mask = GFP_KERNEL,
+	};
+
+	ZFS_ENTER(zsb);
+	*objects = (*shrinker->shrink)(shrinker, &sc);
+	ZFS_EXIT(zsb);
+
+	return (0);
+}
+EXPORT_SYMBOL(zfs_sb_prune);
+#endif /* HAVE_SHRINK */
 
 /*
  * Teardown the zfs_sb_t::z_os.
@@ -1523,6 +1553,7 @@ zfs_init(void)
 	zfs_znode_init();
 	dmu_objset_register_type(DMU_OST_ZFS, zfs_space_delta_cb);
 	register_filesystem(&zpl_fs_type);
+	(void) arc_add_prune_callback(zpl_prune_sbs, NULL);
 }
 
 void
